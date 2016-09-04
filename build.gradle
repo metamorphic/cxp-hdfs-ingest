@@ -1,0 +1,102 @@
+// Build for a particular environment using `gradle -Penv=local build`
+
+buildscript {
+    repositories {
+        maven {
+            url "${artifactory_pluginsUrl}"
+            credentials {
+                username = "${artifactory_user}"
+                password = "${artifactory_password}"
+            }
+        }
+    }
+    dependencies {
+        //Check for the latest version here: http://plugins.gradle.org/plugin/com.jfrog.artifactory
+        classpath 'org.jfrog.buildinfo:build-info-extractor-gradle:3.1.1'
+        classpath 'org.springframework.boot:spring-boot-gradle-plugin:1.2.3.RELEASE'
+        classpath 'org.springframework.xd:spring-xd-module-plugin:1.1.1.RELEASE'
+    }
+}
+
+ext {
+    springXdVersion = '1.1.1.RELEASE'
+    hadoopVersion = '2.6.0'
+    environment = 'dev'
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'spring-boot'
+apply plugin: 'spring-xd-module'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.artifactory'
+
+group = 'io.metamorphic'
+version = '1.0'
+sourceCompatibility = 1.7
+
+loadConfiguration()
+
+def loadConfiguration() {
+    def environment = hasProperty('env') ? env : 'dev'
+    setProperty 'environment', environment
+}
+
+apply from: 'tasks.gradle'
+
+processResources.dependsOn copyConfiguration
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+configurations {
+    provided
+    compile.extendsFrom provided
+}
+
+jar {
+    baseName = 'cxp-hdfs-ingest'
+    version = '1.0'
+}
+
+artifactory {
+    contextUrl = "${artifactory_contextUrl}"   //The base Artifactory URL if not overridden by the publisher/resolver
+    publish {
+        repository {
+            repoKey = 'libs-release-local'
+            username = "${artifactory_user}"
+            password = "${artifactory_password}"
+            maven = true
+        }
+        defaults {
+            publications ('mavenJava')
+        }
+    }
+    resolve {
+        repository {
+            repoKey = 'libs-release'
+            username = "${artifactory_user}"
+            password = "${artifactory_password}"
+            maven = true
+        }
+    }
+}
+
+dependencies {
+    compile 'io.metamorphic:cxp-metadata-provider:1.0'
+    compile 'io.metamorphic:cxp-batch-io:1.0'
+    provided 'org.springframework.boot:spring-boot-starter-batch'
+    provided 'org.springframework.data:spring-data-hadoop:2.1.2.RELEASE'
+    provided 'org.postgresql:postgresql:9.4-1201-jdbc4'
+    //runtime fileTree(dir: 'libs', include: '*.jar')
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
+}

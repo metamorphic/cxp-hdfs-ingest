@@ -1,0 +1,6 @@
+# Currently getting 'Multiple top level module resources found' on
+# <context:property-placeholder location="classpath:config/application.properties,classpath:config/hadoop.properties" ignore-resource-not-found="true"/>
+# May be a Spring XD issue
+
+hd.fs=hdfs://<host>:8020
+mapred.job.tracker=<host>:9001
